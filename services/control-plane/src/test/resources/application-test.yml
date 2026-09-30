@@ -1,0 +1,4 @@
+orvexa:
+  security:
+    api-key: test-api-key
+    internal-api-key: test-internal-key

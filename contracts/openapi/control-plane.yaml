@@ -1,0 +1,258 @@
+openapi: 3.0.3
+info:
+  title: Orvexa Control Plane API
+  version: 0.1.0
+  description: Session lifecycle and durable event APIs for Orvexa.
+servers:
+  - url: http://localhost:8080
+security:
+  - ApiKeyAuth: []
+paths:
+  /api/v1/sessions:
+    post:
+      summary: Create a session
+      operationId: createSession
+      parameters:
+        - $ref: '#/components/parameters/TenantId'
+        - $ref: '#/components/parameters/ActorId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateSessionRequest'
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SessionResponse'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+    get:
+      summary: List sessions for a tenant
+      operationId: listSessions
+      parameters:
+        - $ref: '#/components/parameters/TenantId'
+        - in: query
+          name: status
+          schema:
+            $ref: '#/components/schemas/SessionStatus'
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Size'
+      responses:
+        '200':
+          description: Page of sessions
+  /api/v1/sessions/{sessionId}:
+    get:
+      summary: Get one tenant-scoped session
+      operationId: getSession
+      parameters:
+        - $ref: '#/components/parameters/SessionId'
+        - $ref: '#/components/parameters/TenantId'
+      responses:
+        '200':
+          description: Session
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SessionResponse'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /api/v1/sessions/{sessionId}/status:
+    patch:
+      summary: Transition a session lifecycle status
+      operationId: transitionSession
+      parameters:
+        - $ref: '#/components/parameters/SessionId'
+        - $ref: '#/components/parameters/TenantId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TransitionSessionRequest'
+      responses:
+        '200':
+          description: Updated session
+        '409':
+          description: Invalid lifecycle transition
+  /api/v1/sessions/{sessionId}/events:
+    get:
+      summary: Read durable session events
+      operationId: listSessionEvents
+      parameters:
+        - $ref: '#/components/parameters/SessionId'
+        - $ref: '#/components/parameters/TenantId'
+        - $ref: '#/components/parameters/Page'
+        - in: query
+          name: size
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 50
+      responses:
+        '200':
+          description: Page of events
+  /internal/v1/sessions/{sessionId}/events:
+    post:
+      summary: Append an internal durable event
+      operationId: appendInternalSessionEvent
+      security:
+        - InternalApiKeyAuth: []
+      parameters:
+        - $ref: '#/components/parameters/SessionId'
+        - in: header
+          name: X-Internal-Caller
+          required: true
+          schema:
+            type: string
+            maxLength: 100
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AppendSessionEventRequest'
+      responses:
+        '202':
+          description: Accepted/idempotently replayed event
+        '409':
+          description: Idempotency conflict
+components:
+  securitySchemes:
+    ApiKeyAuth:
+      type: apiKey
+      in: header
+      name: X-API-Key
+    InternalApiKeyAuth:
+      type: apiKey
+      in: header
+      name: X-Internal-API-Key
+  parameters:
+    TenantId:
+      in: header
+      name: X-Tenant-Id
+      required: true
+      schema:
+        type: string
+        format: uuid
+    ActorId:
+      in: header
+      name: X-Actor-Id
+      required: true
+      schema:
+        type: string
+        format: uuid
+    SessionId:
+      in: path
+      name: sessionId
+      required: true
+      schema:
+        type: string
+        format: uuid
+    Page:
+      in: query
+      name: page
+      schema:
+        type: integer
+        minimum: 0
+        default: 0
+    Size:
+      in: query
+      name: size
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 100
+        default: 20
+  schemas:
+    CreateSessionRequest:
+      type: object
+      properties:
+        title:
+          type: string
+          maxLength: 120
+    TransitionSessionRequest:
+      type: object
+      required: [status]
+      properties:
+        status:
+          $ref: '#/components/schemas/SessionStatus'
+    AppendSessionEventRequest:
+      type: object
+      required: [clientEventId, eventType, actorType]
+      properties:
+        clientEventId:
+          type: string
+          format: uuid
+        eventType:
+          type: string
+          enum: [SESSION_CREATED, SESSION_STATUS_CHANGED, MESSAGE_CREATED, TOOL_EXECUTION, AI_RESPONSE, ESCALATION_REQUESTED, ERROR]
+        actorType:
+          type: string
+          enum: [USER, SYSTEM, AI, TOOL]
+        payload:
+          type: object
+          additionalProperties: true
+    SessionStatus:
+      type: string
+      enum: [ACTIVE, ESCALATED, CLOSED]
+    SessionResponse:
+      type: object
+      required: [id, tenantId, createdBy, status, lastEventSequence, createdAt, updatedAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        tenantId:
+          type: string
+          format: uuid
+        createdBy:
+          type: string
+          format: uuid
+        title:
+          type: string
+          nullable: true
+        status:
+          $ref: '#/components/schemas/SessionStatus'
+        lastEventSequence:
+          type: integer
+          format: int64
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+    ApiErrorResponse:
+      type: object
+      properties:
+        timestamp:
+          type: string
+          format: date-time
+        status:
+          type: integer
+        code:
+          type: string
+        message:
+          type: string
+        path:
+          type: string
+        correlationId:
+          type: string
+  responses:
+    Unauthorized:
+      description: Missing or invalid API key
+    NotFound:
+      description: Resource not found
+    ValidationError:
+      description: Request validation failed
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiErrorResponse'
