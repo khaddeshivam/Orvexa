@@ -1,5 +1,8 @@
 package com.orvexa.controlplane.security;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.orvexa.controlplane.config.CorrelationIdFilter;
+import com.orvexa.controlplane.exception.ApiErrorResponse;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -10,16 +13,20 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
+import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
 import java.util.List;
 
 public class ApiKeyAuthenticationFilter extends OncePerRequestFilter {
 
     private final String apiKey;
     private final String internalApiKey;
+    private final ObjectMapper objectMapper;
 
-    public ApiKeyAuthenticationFilter(String apiKey, String internalApiKey) {
+    public ApiKeyAuthenticationFilter(String apiKey, String internalApiKey, ObjectMapper objectMapper) {
         this.apiKey = apiKey;
         this.internalApiKey = internalApiKey;
+        this.objectMapper = objectMapper;
     }
 
     @Override
@@ -44,7 +51,14 @@ public class ApiKeyAuthenticationFilter extends OncePerRequestFilter {
         if (expectedKey == null || expectedKey.isBlank() || !expectedKey.equals(providedKey)) {
             response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
             response.setContentType("application/json");
-            response.getWriter().write("{\"status\":401,\"code\":\"UNAUTHORIZED\",\"message\":\"Valid API key required\"}");
+            objectMapper.writeValue(response.getWriter(), new ApiErrorResponse(
+                    OffsetDateTime.now(ZoneOffset.UTC),
+                    HttpServletResponse.SC_UNAUTHORIZED,
+                    "UNAUTHORIZED",
+                    "Valid API key required",
+                    path,
+                    String.valueOf(request.getAttribute(CorrelationIdFilter.ATTRIBUTE))
+            ));
             return;
         }
 

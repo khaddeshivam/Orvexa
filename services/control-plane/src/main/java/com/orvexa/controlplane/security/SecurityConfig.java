@@ -1,5 +1,7 @@
 package com.orvexa.controlplane.security;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.orvexa.controlplane.config.CorrelationIdFilter;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -14,6 +16,8 @@ public class SecurityConfig {
     @Bean
     SecurityFilterChain securityFilterChain(
             HttpSecurity http,
+            CorrelationIdFilter correlationIdFilter,
+            ObjectMapper objectMapper,
             @Value("${orvexa.security.api-key}") String apiKey,
             @Value("${orvexa.security.internal-api-key}") String internalApiKey
     ) throws Exception {
@@ -27,7 +31,11 @@ public class SecurityConfig {
                         .requestMatchers("/actuator/**").permitAll()
                         .anyRequest().authenticated()
                 )
-                .addFilterBefore(new ApiKeyAuthenticationFilter(apiKey, internalApiKey), AnonymousAuthenticationFilter.class)
+                .addFilterBefore(correlationIdFilter, AnonymousAuthenticationFilter.class)
+                .addFilterAfter(
+                        new ApiKeyAuthenticationFilter(apiKey, internalApiKey, objectMapper),
+                        CorrelationIdFilter.class
+                )
                 .build();
     }
 }
