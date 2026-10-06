@@ -1,0 +1,49 @@
+openapi: 3.1.0
+info:
+  title: Orvexa AI Gateway API
+  version: 0.2.0
+paths:
+  /api/v1/health:
+    get:
+      responses:
+        '200': {description: Healthy}
+  /api/v1/knowledge/documents:
+    post:
+      security: [{ApiKey: []}]
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file]
+              properties:
+                file: {type: string, format: binary}
+      responses:
+        '200': {description: Indexed}
+        '400': {description: Invalid document}
+        '415': {description: Unsupported document}
+  /api/v1/chat:
+    post:
+      security: [{ApiKey: []}]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ChatRequest'
+      responses:
+        '200': {description: Grounded or abstained answer}
+components:
+  securitySchemes:
+    ApiKey:
+      type: apiKey
+      in: header
+      name: X-API-Key
+  schemas:
+    ChatRequest:
+      type: object
+      required: [question]
+      properties:
+        question: {type: string, minLength: 1, maxLength: 4000}
+        top_k: {type: integer, minimum: 1, maximum: 20, default: 5}
