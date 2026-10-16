@@ -17,5 +17,44 @@ services:
       timeout: 5s
       retries: 10
 
+  qdrant:
+    image: qdrant/qdrant:latest
+    container_name: orvexa-qdrant
+    restart: unless-stopped
+    ports:
+      - "${QDRANT_PORT:-6333}:6333"
+    volumes:
+      - qdrant-data:/qdrant/storage
+
+  ollama:
+    image: ollama/ollama:latest
+    container_name: orvexa-ollama
+    restart: unless-stopped
+    ports:
+      - "${OLLAMA_PORT:-11434}:11434"
+    volumes:
+      - ollama-data:/root/.ollama
+
+  ai-gateway:
+    build:
+      context: ./services/ai-gateway
+    container_name: orvexa-ai-gateway
+    restart: unless-stopped
+    ports:
+      - "${AI_GATEWAY_PORT:-8000}:8000"
+    environment:
+      GATEWAY_INTERNAL_API_KEY: ${ORVEXA_INTERNAL_API_KEY:-local-internal-key}
+      GATEWAY_QDRANT_URL: http://qdrant:6333
+      GATEWAY_OLLAMA_BASE_URL: http://ollama:11434
+      GATEWAY_OLLAMA_MODEL: ${GATEWAY_OLLAMA_MODEL:-llama3.2:3b}
+    volumes:
+      - fastembed-models:/models
+    depends_on:
+      - qdrant
+      - ollama
+
 volumes:
   orvexa-postgres-data:
+  qdrant-data:
+  ollama-data:
+  fastembed-models:
