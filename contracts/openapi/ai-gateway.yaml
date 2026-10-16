@@ -2,14 +2,43 @@ openapi: 3.1.0
 info:
   title: Orvexa AI Gateway API
   version: 0.2.0
+  description: Internal, tenant-scoped document retrieval and grounded-answer API.
 paths:
-  /api/v1/health:
+  /health:
     get:
+      summary: Liveness probe
       responses:
-        '200': {description: Healthy}
-  /api/v1/knowledge/documents:
+        '200':
+          description: Healthy
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [status]
+                properties:
+                  status: {type: string, example: ok}
+  /v1/ingest:
     post:
-      security: [{ApiKey: []}]
+      summary: Index plain-text document content
+      security: [{InternalApiKey: []}]
+      parameters:
+        - $ref: '#/components/parameters/TenantId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/IngestRequest'}
+      responses:
+        '201': {description: Indexed, content: {application/json: {schema: {$ref: '#/components/schemas/IngestResponse'}}}}
+        '400': {$ref: '#/components/responses/InvalidTenant'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '422': {$ref: '#/components/responses/ValidationError'}
+  /v1/ingest/file:
+    post:
+      summary: Extract and index a TXT, Markdown, or PDF document
+      security: [{InternalApiKey: []}]
+      parameters:
+        - $ref: '#/components/parameters/TenantId'
       requestBody:
         required: true
         content:
@@ -19,31 +48,99 @@ paths:
               required: [file]
               properties:
                 file: {type: string, format: binary}
+                title: {type: string, minLength: 1, maxLength: 200}
+                documentId: {type: string, maxLength: 100}
       responses:
-        '200': {description: Indexed}
-        '400': {description: Invalid document}
-        '415': {description: Unsupported document}
-  /api/v1/chat:
+        '201': {description: Indexed, content: {application/json: {schema: {$ref: '#/components/schemas/IngestResponse'}}}}
+        '400': {$ref: '#/components/responses/InvalidTenant'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '413': {description: File exceeds 10 MB}
+        '415': {description: Unsupported file type}
+        '422': {$ref: '#/components/responses/ValidationError'}
+  /v1/query:
     post:
-      security: [{ApiKey: []}]
+      summary: Answer from tenant-scoped indexed documents
+      security: [{InternalApiKey: []}]
+      parameters:
+        - $ref: '#/components/parameters/TenantId'
       requestBody:
         required: true
         content:
           application/json:
-            schema:
-              $ref: '#/components/schemas/ChatRequest'
+            schema: {$ref: '#/components/schemas/QueryRequest'}
       responses:
-        '200': {description: Grounded or abstained answer}
+        '200': {description: Grounded answer or abstention, content: {application/json: {schema: {$ref: '#/components/schemas/QueryResponse'}}}}
+        '400': {$ref: '#/components/responses/InvalidTenant'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '422': {$ref: '#/components/responses/ValidationError'}
+        '502': {description: Ollama unavailable}
+  /v1/documents/{documentId}:
+    delete:
+      summary: Delete one tenant-scoped document
+      security: [{InternalApiKey: []}]
+      parameters:
+        - $ref: '#/components/parameters/TenantId'
+        - name: documentId
+          in: path
+          required: true
+          schema: {type: string, minLength: 1, maxLength: 100}
+      responses:
+        '204': {description: Removed (or did not exist)}
+        '400': {$ref: '#/components/responses/InvalidTenant'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
 components:
   securitySchemes:
-    ApiKey:
+    InternalApiKey:
       type: apiKey
       in: header
-      name: X-API-Key
+      name: X-Internal-API-Key
+  parameters:
+    TenantId:
+      name: X-Tenant-Id
+      in: header
+      required: true
+      schema: {type: string, format: uuid}
+  responses:
+    InvalidTenant: {description: X-Tenant-Id is missing or invalid}
+    Unauthorized: {description: Missing or invalid X-Internal-API-Key}
+    ValidationError: {description: Invalid request or empty extracted document}
   schemas:
-    ChatRequest:
+    IngestRequest:
+      type: object
+      required: [title, text]
+      properties:
+        title: {type: string, minLength: 1, maxLength: 200}
+        text: {type: string, minLength: 1, maxLength: 500000}
+        documentId: {type: string, maxLength: 100}
+    IngestResponse:
+      type: object
+      required: [documentId, chunkCount]
+      properties:
+        documentId: {type: string}
+        chunkCount: {type: integer, minimum: 1}
+    QueryRequest:
       type: object
       required: [question]
       properties:
-        question: {type: string, minLength: 1, maxLength: 4000}
-        top_k: {type: integer, minimum: 1, maximum: 20, default: 5}
+        question: {type: string, minLength: 1, maxLength: 2000}
+    Citation:
+      type: object
+      required: [ref, documentId, chunkIndex, title, snippet, score]
+      properties:
+        ref: {type: integer, minimum: 1}
+        documentId: {type: string}
+        chunkIndex: {type: integer, minimum: 0}
+        title: {type: string}
+        snippet: {type: string}
+        score: {type: number}
+    QueryResponse:
+      type: object
+      required: [answer, abstained, grounded, citations]
+      properties:
+        answer: {type: string}
+        abstained: {type: boolean}
+        grounded: {type: boolean}
+        citations:
+          type: array
+          items: {$ref: '#/components/schemas/Citation'}
+        topScore: {type: [number, 'null']}
