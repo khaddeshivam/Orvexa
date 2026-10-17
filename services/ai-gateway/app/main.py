@@ -89,6 +89,18 @@ def create_app(settings: Settings | None = None, rag: RagService | None = None) 
     def health():
         return {"status": "ok"}
 
+    @app.get("/ready")
+    def readiness(svc: RagService = Depends(get_rag)):
+        """Report whether the vector store is reachable; unlike /health, this checks a dependency."""
+        try:
+            svc.store.client.get_collections()
+        except Exception:
+            return JSONResponse(
+                status_code=503,
+                content={"status": "not_ready", "dependencies": {"qdrant": "unavailable"}},
+            )
+        return {"status": "ok", "dependencies": {"qdrant": "ok"}}
+
     protected = [Depends(require_internal_key)]
 
     @app.post("/v1/ingest", response_model=IngestResponse, status_code=201, dependencies=protected)

@@ -26,6 +26,21 @@ def test_health_is_open(client):
     assert client.get("/health").json() == {"status": "ok"}
 
 
+def test_ready_reports_qdrant_availability(client, rag, monkeypatch):
+    assert client.get("/ready").json() == {"status": "ok", "dependencies": {"qdrant": "ok"}}
+
+    def unavailable():
+        raise RuntimeError("qdrant down")
+
+    monkeypatch.setattr(rag.store.client, "get_collections", unavailable)
+    response = client.get("/ready")
+    assert response.status_code == 503
+    assert response.json() == {
+        "status": "not_ready",
+        "dependencies": {"qdrant": "unavailable"},
+    }
+
+
 def test_missing_or_wrong_key_is_401(client, tenant_a):
     body = {"question": "hi"}
     assert client.post("/v1/query", json=body, headers={"X-Tenant-Id": tenant_a}).status_code == 401

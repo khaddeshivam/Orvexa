@@ -17,6 +17,21 @@ paths:
                 required: [status]
                 properties:
                   status: {type: string, example: ok}
+  /ready:
+    get:
+      summary: Readiness probe
+      description: Verifies that Qdrant is reachable. This endpoint is intentionally unauthenticated.
+      responses:
+        '200':
+          description: Qdrant is reachable
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/ReadinessResponse'}
+        '503':
+          description: Qdrant is unavailable
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/ReadinessResponse'}
   /v1/ingest:
     post:
       summary: Index plain-text document content
@@ -105,6 +120,16 @@ components:
     Unauthorized: {description: Missing or invalid X-Internal-API-Key}
     ValidationError: {description: Invalid request or empty extracted document}
   schemas:
+    ReadinessResponse:
+      type: object
+      required: [status, dependencies]
+      properties:
+        status: {type: string, enum: [ok, not_ready]}
+        dependencies:
+          type: object
+          required: [qdrant]
+          properties:
+            qdrant: {type: string, enum: [ok, unavailable]}
     IngestRequest:
       type: object
       required: [title, text]
