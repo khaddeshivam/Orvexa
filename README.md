@@ -4,9 +4,11 @@
 
 ## Project status
 
-**Phase 1 — Control Plane foundation complete**
+**Phase 2 — AI Gateway + RAG build in progress**
 
-The Java control plane now provides the first real product capability: tenant-scoped sessions, durable lifecycle events, PostgreSQL persistence, Flyway migrations, validation, error contracts, correlation IDs, API-key protection, pagination, and integration/unit tests.
+The Java control plane provides tenant-scoped sessions and durable lifecycle events. The FastAPI
+AI Gateway adds tenant-isolated document ingestion, vector retrieval, grounded answers with
+citations, and abstention when evidence is insufficient.
 
 ## Architecture
 
@@ -107,10 +109,24 @@ Copy the environment template if desired:
 cp .env.example .env
 ```
 
-Start PostgreSQL:
+Start the local stack:
 
 ```bash
-docker compose up -d postgres
+docker compose up -d
+```
+
+Download the local model once after Ollama starts:
+
+```bash
+docker compose exec ollama ollama pull llama3.2:3b
+```
+
+Service health endpoints:
+
+```text
+Control Plane: http://localhost:8080/actuator/health
+AI Gateway:    http://localhost:8000/health
+Qdrant:        http://localhost:6333/dashboard
 ```
 
 Run the control plane:
@@ -175,9 +191,7 @@ When appending an event, the control plane locks the session row, increments `la
 
 Phase 1 intentionally does not add Redis, Kafka/RabbitMQ, Kubernetes, SIP, or a multi-agent framework. Each can be introduced when a real requirement exists.
 
-## Next phase
-
-**Phase 2 — AI Gateway + RAG**
+## Phase 2 capabilities
 
 - FastAPI AI boundary
 - document ingestion
@@ -189,3 +203,6 @@ Phase 1 intentionally does not add Redis, Kafka/RabbitMQ, Kubernetes, SIP, or a 
 - source/citation model
 - grounded answer generation
 - abstention on insufficient evidence
+
+The internal AI Gateway contract is in `contracts/openapi/ai-gateway.yaml`. Its local setup and
+request examples are documented in `services/ai-gateway/README.md`.

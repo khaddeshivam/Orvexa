@@ -25,13 +25,22 @@ All `/v1/*` routes require `X-Internal-API-Key` and `X-Tenant-Id` (UUID).
 
 ## Run locally
 
+From the repository root, start the containerized stack:
+
+    docker compose up -d
+    docker compose exec ollama ollama pull llama3.2:3b
+    curl http://localhost:8000/health
+
+The first query downloads the embedding model (~130 MB) into the `fastembed-models` volume.
+
+For gateway-only development, start Qdrant and Ollama from the repository root, then run FastAPI
+from this directory:
+
     docker compose up -d qdrant ollama
     docker compose exec ollama ollama pull llama3.2:3b
     python -m venv .venv && .venv\Scripts\activate      # PowerShell
     pip install -r requirements-dev.txt
     uvicorn app.main:app --reload --port 8000
-
-First start downloads the embedding model (~130 MB).
 
 ## Tests
 
