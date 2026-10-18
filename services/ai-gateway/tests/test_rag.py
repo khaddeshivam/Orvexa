@@ -91,3 +91,17 @@ def test_delete_document_removes_it(rag, tenant_a):
     rag.delete_document(tenant_a, "refunds")
 
     assert rag.query(tenant_a, "How many business days do refunds take?").abstained
+
+
+def test_abstention_still_reports_best_score_for_tuning(rag, tenant_a):
+    rag.ingest(tenant_a, "Refund policy", REFUND_DOC)
+    rag.min_score = 0.99  # force abstention even though there is a relevant hit
+    out = rag.query(tenant_a, "How many business days do refunds take?")
+
+    assert out.abstained
+    assert out.top_score is not None and 0.2 < out.top_score < 0.99
+
+
+def test_empty_knowledge_base_has_null_score(rag, tenant_a):
+    out = rag.query(tenant_a, "anything at all")
+    assert out.abstained and out.top_score is None

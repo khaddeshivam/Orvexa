@@ -58,9 +58,10 @@ class RagService:
         self.store.delete_document(tenant_id, document_id)
 
     def query(self, tenant_id: str, question: str) -> QueryResponse:
-        hits = self.store.search(tenant_id, self.embedder.embed_query(question), self.top_k)
-        hits = [h for h in hits if h.score >= self.min_score]
-        top_score = max((h.score for h in hits), default=None)
+        candidates = self.store.search(tenant_id, self.embedder.embed_query(question), self.top_k)
+        # Report the best score even when we abstain: it is the number you tune min_score with.
+        top_score = max((h.score for h in candidates), default=None)
+        hits = [h for h in candidates if h.score >= self.min_score]
 
         if not hits:
             return self._abstain(top_score)
