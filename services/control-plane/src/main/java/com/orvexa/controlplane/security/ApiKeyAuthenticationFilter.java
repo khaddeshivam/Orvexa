@@ -13,6 +13,8 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.util.List;
@@ -48,7 +50,7 @@ public class ApiKeyAuthenticationFilter extends OncePerRequestFilter {
 
         String expectedKey = path.startsWith("/internal/") ? internalApiKey : apiKey;
 
-        if (expectedKey == null || expectedKey.isBlank() || !expectedKey.equals(providedKey)) {
+        if (expectedKey == null || expectedKey.isBlank() || !constantTimeEquals(expectedKey, providedKey)) {
             response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
             response.setContentType("application/json");
             objectMapper.writeValue(response.getWriter(), new ApiErrorResponse(
@@ -77,5 +79,16 @@ public class ApiKeyAuthenticationFilter extends OncePerRequestFilter {
         } finally {
             SecurityContextHolder.clearContext();
         }
+    }
+
+    /** Constant-time comparison so response timing does not leak how much of a key matched. */
+    private static boolean constantTimeEquals(String expected, String provided) {
+        if (provided == null) {
+            return false;
+        }
+        return MessageDigest.isEqual(
+                expected.getBytes(StandardCharsets.UTF_8),
+                provided.getBytes(StandardCharsets.UTF_8)
+        );
     }
 }
