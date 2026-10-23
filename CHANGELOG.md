@@ -23,6 +23,8 @@ All notable changes to this project are documented here. The format follows
 
 ### Fixed
 - Removed the empty `app/rag/` package that shadowed `app/rag.py` and made the gateway unimportable.
+- Control-plane Dockerfile: valid `ENTRYPOINT`, multi-stage build, runs as a non-root user.
+- Removed the unused `modelmapper` dependency.
 
 ### Known limitations
 See [README](README.md#known-limitations). The control plane and gateway are not integrated yet (Phase 3).

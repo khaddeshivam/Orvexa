@@ -91,7 +91,7 @@ tenant, argument validation and approval for risky actions.
 | 7 | No TLS in the stack | Credentials on the wire | Terminate TLS at a reverse proxy |
 | 8 | No audit of who called the internal API | Weak accountability | Record caller identity on every internal event |
 | 9 | No dependency or container scanning in CI | Known-vulnerable libraries | Dependabot and an image scan |
-| 10 | Containers run as root (`python:3.12-slim` default user) | Larger blast radius | Add a non-root `USER` |
+| 10 | AI gateway container runs as root (the control plane image runs as a non-root user) | Larger blast radius | Add a non-root `USER` to the gateway Dockerfile |
 
 ## 7. Secrets handling
 
