@@ -74,6 +74,9 @@ class SessionServiceIntegrationTest {
         assertThat(session.getTitle()).isEqualTo("First support session");
         assertThat(session.getStatus()).isEqualTo(SessionStatus.ACTIVE);
         assertThat(session.getLastEventSequence()).isEqualTo(1);
+        assertThat(sessionService.get(tenantId, session.getId()).getLastEventSequence())
+                .as("last_event_sequence must be persisted, not only set on the in-memory object")
+                .isEqualTo(1);
 
         var events = eventRepository.findBySessionIdOrderBySequenceNumberAsc(
                 session.getId(),

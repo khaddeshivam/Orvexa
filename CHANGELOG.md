@@ -25,6 +25,8 @@ All notable changes to this project are documented here. The format follows
 - Removed the empty `app/rag/` package that shadowed `app/rag.py` and made the gateway unimportable.
 - Control-plane Dockerfile: valid `ENTRYPOINT`, multi-stage build, runs as a non-root user.
 - Removed the unused `modelmapper` dependency.
+- Control plane: new sessions persisted `last_event_sequence = 0` after writing event 1, so the second event on any session failed with a duplicate-sequence error. `SessionService.create` now uses the managed instance returned by `save()`.
+- Control plane: Flyway migrations did not run under Spring Boot 4 because only `flyway-core` was on the classpath; switched to `spring-boot-starter-flyway`.
 
 ### Known limitations
 See [README](README.md#known-limitations). The control plane and gateway are not integrated yet (Phase 3).
