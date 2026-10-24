@@ -42,13 +42,15 @@ public class SessionService {
 
     @Transactional
     public SessionEntity create(UUID tenantId, UUID actorId, CreateSessionRequest request) {
-        SessionEntity session = new SessionEntity(
+        // The id is pre-assigned, so Spring Data merges instead of persisting, and save() returns a
+        // different (managed) instance. Keep using the returned one: changes made to the original
+        // (such as the event sequence below) would otherwise never be written to the database.
+        SessionEntity session = sessionRepository.save(new SessionEntity(
                 UUID.randomUUID(),
                 tenantId,
                 actorId,
                 normalizeTitle(request.title())
-        );
-        sessionRepository.save(session);
+        ));
 
         JsonNode payload = objectMapper.valueToTree(Map.of(
                 "title", request.title() == null ? "" : request.title()
