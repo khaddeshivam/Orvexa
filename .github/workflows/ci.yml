@@ -23,6 +23,10 @@ jobs:
         working-directory: services/control-plane
         run: mvn -B test
 
+      - name: Build Control Plane artifact
+        working-directory: services/control-plane
+        run: mvn -B -DskipTests package
+
   python-gateway:
     runs-on: ubuntu-latest
     steps:
@@ -61,6 +65,17 @@ jobs:
           npm ci
           npm run build
 
+  containers:
+    runs-on: ubuntu-latest
+    needs: [control-plane, python-gateway, web]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build Control Plane image
+        run: docker build -t orvexa/control-plane:ci ./services/control-plane
+      - name: Build AI Gateway image
+        run: docker build -t orvexa/ai-gateway:ci ./services/ai-gateway
+      # The web app is a placeholder UI shell with no Dockerfile yet; add its image build with the real console.
+
   structure:
     runs-on: ubuntu-latest
     steps:
@@ -69,8 +84,10 @@ jobs:
         run: |
           test -f README.md
           test -f services/control-plane/pom.xml
+          test -f services/control-plane/Dockerfile
           test -f services/control-plane/src/main/resources/db/migration/V2__create_session_domain.sql
           test -f services/ai-gateway/requirements.txt
+          test -f services/ai-gateway/Dockerfile
           test -f apps/web/package.json
           test -f contracts/openapi/control-plane.yaml
           test -f contracts/openapi/ai-gateway.yaml

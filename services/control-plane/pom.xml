@@ -63,13 +63,6 @@
         <artifactId>spring-boot-starter-data-jpa</artifactId>
       </dependency>
 
-      <!-- DTO / Object Mapping -->
-      <dependency>
-        <groupId>org.modelmapper</groupId>
-        <artifactId>modelmapper</artifactId>
-        <version>3.2.0</version>
-      </dependency>
-
       <!-- Application Metrics and Health Checks -->
       <dependency>
         <groupId>org.springframework.boot</groupId>

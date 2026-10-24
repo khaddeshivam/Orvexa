@@ -64,7 +64,7 @@ cd apps/web              && npm ci && npm run build
 
 Tick each box when it is true, before tagging a release.
 
-- [ ] CI is green on `main` for all four jobs: control-plane, python-gateway, web, structure
+- [ ] CI is green on `main` for all five jobs: control-plane, python-gateway, web, containers, structure
 - [ ] `mvn test` passes locally with Docker running
 - [ ] `docker compose up -d` brings postgres, qdrant, ollama and ai-gateway to healthy
 - [ ] `docker compose exec ollama ollama pull llama3.2:3b` completes

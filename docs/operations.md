@@ -111,7 +111,7 @@ re-ingesting documents.
 
 ## 6. Release procedure
 
-1. All CI jobs green on `main` (control plane, gateway, web, structure).
+1. All CI jobs green on `main` (control plane, gateway, web, containers, structure).
 2. Run the verification checklist in [testing.md](testing.md#7-release-verification-checklist).
 3. Update [CHANGELOG.md](../CHANGELOG.md).
 4. Tag: `git tag -a vX.Y.Z -m "..." && git push origin vX.Y.Z`.
